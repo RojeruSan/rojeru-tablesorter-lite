@@ -1,0 +1,40 @@
+{
+  "name": "rojeru-tablesorter-lite",
+  "version": "1.0.0-lite",
+  "description": "Versión Lite gratuita de Rojeru TableSorter - Tablas HTML dinámicas con ordenamiento, filtrado y paginación",
+  "keywords": [
+    "table",
+    "tablesorter",
+    "datatable",
+    "pagination",
+    "filter",
+    "sort",
+    "javascript",
+    "lite"
+  ],
+  "homepage": "https://github.com/rojerusan/rojeru-tablesorter-lite#readme",
+  "bugs": {
+    "url": "https://github.com/rojerusan/rojeru-tablesorter-lite/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rojerusan/rojeru-tablesorter-lite.git"
+  },
+  "license": "MIT",
+  "author": "Rogelio Urieta Camacho <rogelio.urieta14@gmail.com>",
+  "type": "commonjs",
+  "main": "rojeru-tablesorter-lite.js",
+  "files": [
+    "rojeru-tablesorter-lite.js",
+    "rojeru-tablesorter-lite.css",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "echo \"Build complete\"",
+    "demo": "open demo/index.html || start demo/index.html || xdg-open demo/index.html"
+  },
+  "devDependencies": {}
+}
