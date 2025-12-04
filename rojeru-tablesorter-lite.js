@@ -1,3 +1,28 @@
+/*!
+ * (c) 2025 Rogelio Urieta Camacho (RojeruSan)
+ * Released under the MIT License
+  * MIT License
+ *
+ * Copyright (c) 2025 Rogelio Urieta Camacho (RojeruSan)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined'
         ? module.exports = factory()
@@ -111,6 +136,7 @@
             this.currentPage = 1;
             this.totalRecords = 0;
             this.fullData = [];
+            this.filterCache = null;
 
             this.initialize();
         }
@@ -143,6 +169,23 @@
                 // Establecer valores por defecto
                 col.sortable = col.sortable !== undefined ? col.sortable : true;
                 col.filtrable = col.filtrable !== undefined ? col.filtrable : true;
+
+                // Si tiene selectOptions, asegurar que sean correctos
+                if (col.selectOptions || col.opcionesSelect) {
+                    const optionsList = col.selectOptions || col.opcionesSelect;
+                    if (!Array.isArray(optionsList)) {
+                        console.warn(`Column ${col.key}: selectOptions should be an array`);
+                        col.selectOptions = [];
+                    } else {
+                        // Normalizar opciones
+                        col.selectOptions = optionsList.map(opt => {
+                            if (typeof opt === 'string') {
+                                return { value: opt, label: opt };
+                            }
+                            return opt;
+                        });
+                    }
+                }
             });
 
             if (options.translations || options.traducciones) {
@@ -201,12 +244,16 @@
             this.renderHeader();
 
             if (this.options.showSearch) {
-                document.getElementById(`buscador-global-${this.container.id}`)
-                    .addEventListener('input', (e) => {
+                const searchInput = document.getElementById(`buscador-global-${this.container.id}`);
+                if (searchInput) {
+                    searchInput.value = this.globalSearch;
+                    searchInput.addEventListener('input', throttle((e) => {
                         this.globalSearch = e.target.value.trim().toLowerCase();
                         this.currentPage = 1;
+                        this.filterCache = null; // Invalidar cache
                         this.updateTable();
-                    });
+                    }, 300));
+                }
             }
 
             this.adjustWrapperHeight();
@@ -234,7 +281,10 @@
             this.options.columns.forEach(col => {
                 const th = document.createElement('th');
                 if (col.width || col.ancho) th.style.minWidth = col.width || col.ancho;
-                th.textContent = col.title || col.titulo;
+
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = col.title || col.titulo;
+                th.appendChild(titleSpan);
 
                 // Ordenamiento
                 const isSortable = col.sortable !== false;
@@ -254,6 +304,7 @@
                             this.options.sortOrder = 'asc';
                         }
                         this.currentPage = 1;
+                        this.filterCache = null; // Invalidar cache
                         this.updateTable();
                     });
                 }
@@ -261,48 +312,56 @@
 
                 // Filtros
                 const filterDiv = document.createElement('div');
+                filterDiv.className = 'rojeru-filtro-container';
+
+                const isFilterable = col.filtrable !== false;
                 if (col.selectOptions || col.opcionesSelect) {
-                    const select = document.createElement('select');
-                    select.className = 'form-control rojeru-filtro-select';
-                    if (col.filtrable === false) select.disabled = true;
-
-                    const defaultOption = document.createElement('option');
-                    defaultOption.value = '';
-                    defaultOption.textContent = this.t('todos');
-                    select.appendChild(defaultOption);
-
                     const optionsList = col.selectOptions || col.opcionesSelect;
-                    optionsList.forEach(opt => {
-                        const option = document.createElement('option');
-                        option.value = opt.value;
-                        option.textContent = opt.label;
-                        if (this.filters[col.key] === opt.value) {
-                            option.selected = true;
-                        }
-                        select.appendChild(option);
-                    });
+                    if (optionsList && optionsList.length > 0) {
+                        const select = document.createElement('select');
+                        select.className = 'form-control rojeru-filtro-select';
+                        select.dataset.colKey = col.key;
+                        if (!isFilterable) select.disabled = true;
 
-                    if (col.filtrable !== false) {
-                        select.addEventListener('change', (e) => {
-                            const value = e.target.value;
-                            if (value) {
-                                this.filters[col.key] = value;
-                            } else {
-                                delete this.filters[col.key];
+                        const defaultOption = document.createElement('option');
+                        defaultOption.value = '';
+                        defaultOption.textContent = this.t('todos');
+                        select.appendChild(defaultOption);
+
+                        optionsList.forEach(opt => {
+                            const option = document.createElement('option');
+                            option.value = String(opt.value);
+                            option.textContent = opt.label || String(opt.value);
+                            if (this.filters[col.key] === String(opt.value)) {
+                                option.selected = true;
                             }
-                            this.currentPage = 1;
-                            this.updateTable();
+                            select.appendChild(option);
                         });
+
+                        if (isFilterable) {
+                            select.addEventListener('change', (e) => {
+                                const value = e.target.value;
+                                if (value) {
+                                    this.filters[col.key] = value;
+                                } else {
+                                    delete this.filters[col.key];
+                                }
+                                this.currentPage = 1;
+                                this.filterCache = null; // Invalidar cache
+                                this.updateTable();
+                            });
+                        }
+                        filterDiv.appendChild(select);
                     }
-                    filterDiv.appendChild(select);
                 } else {
                     const input = document.createElement('input');
                     input.type = 'text';
                     input.className = 'form-control form-control-sm rojeru-filtro';
+                    input.dataset.colKey = col.key;
                     input.placeholder = `${this.t('filtrar') || 'Filter'} ${col.title || col.titulo}`;
                     input.value = this.filters[col.key] || '';
 
-                    if (col.filtrable === false) {
+                    if (!isFilterable) {
                         input.disabled = true;
                     } else {
                         input.addEventListener('input', throttle((e) => {
@@ -313,6 +372,7 @@
                                 delete this.filters[col.key];
                             }
                             this.currentPage = 1;
+                            this.filterCache = null; // Invalidar cache
                             this.updateTable();
                         }, 300));
                     }
@@ -350,15 +410,21 @@
         }
 
         loadData(data) {
-            this.fullData = [...data];
+            this.fullData = Array.isArray(data) ? [...data] : [];
             this.filters = {};
             this.globalSearch = '';
             this.currentPage = 1;
+            this.filterCache = null; // Invalidar cache
+
+            // Limpiar inputs si existen
+            const searchInput = document.getElementById(`buscador-global-${this.container.id}`);
+            if (searchInput) searchInput.value = '';
+
             this.updateTable();
         }
 
         updateTable() {
-            const filtered = this.filterData();
+            const filtered = this.getFilteredData();
             this.totalRecords = filtered.length;
             const realLimit = this.getRealLimit();
             const start = (this.currentPage - 1) * realLimit;
@@ -369,41 +435,69 @@
             this.updateSortIcons();
         }
 
-        filterData() {
+        getFilteredData() {
+            // Usar cache si está disponible
+            if (this.filterCache) {
+                return this.filterCache;
+            }
+
             const searchColumns = this.options.columns.map(col => col.key);
             let filtered = this.fullData.filter(row => {
                 // Búsqueda global
-                const matchesGlobal = this.globalSearch === '' ||
-                    searchColumns.some(key => {
+                if (this.globalSearch) {
+                    const matchesGlobal = searchColumns.some(key => {
                         const value = row[key];
-                        return value != null && String(value).toLowerCase().includes(this.globalSearch);
+                        return value != null &&
+                            String(value).toLowerCase().includes(this.globalSearch);
                     });
-                if (!matchesGlobal) return false;
+                    if (!matchesGlobal) return false;
+                }
 
                 // Filtros por columna
-                return this.options.columns.every(col => {
-                    if (col.filtrable === false) return true;
-                    const filterValue = this.filters[col.key];
-                    if (!filterValue) return true;
+                for (const [colKey, filterValue] of Object.entries(this.filters)) {
+                    if (!filterValue) continue;
 
-                    const cellValue = row[col.key];
-                    return cellValue != null &&
-                        String(cellValue).toLowerCase().includes(filterValue.toLowerCase());
-                });
+                    const col = this.options.columns.find(c => c.key === colKey);
+                    if (!col || col.filtrable === false) continue;
+
+                    const cellValue = row[colKey];
+                    const cellStr = cellValue != null ? String(cellValue) : '';
+                    const filterStr = String(filterValue).toLowerCase();
+
+                    // Para selects, comparación exacta (case-insensitive)
+                    if (col.selectOptions || col.opcionesSelect) {
+                        if (cellStr.toLowerCase() !== filterStr) {
+                            return false;
+                        }
+                    } else {
+                        // Para inputs de texto, búsqueda parcial
+                        if (!cellStr.toLowerCase().includes(filterStr)) {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
             });
 
             // Ordenamiento
             if (this.options.sortBy) {
-                filtered.sort((a, b) => {
-                    const key = this.options.sortBy;
-                    const aVal = String(a[key] || '').toLowerCase();
-                    const bVal = String(b[key] || '').toLowerCase();
-                    if (aVal < bVal) return this.options.sortOrder === 'asc' ? -1 : 1;
-                    if (aVal > bVal) return this.options.sortOrder === 'asc' ? 1 : -1;
-                    return 0;
-                });
+                const col = this.options.columns.find(c => c.key === this.options.sortBy);
+                if (col && col.sortable !== false) {
+                    filtered.sort((a, b) => {
+                        const key = this.options.sortBy;
+                        const aVal = a[key] != null ? String(a[key]).toLowerCase() : '';
+                        const bVal = b[key] != null ? String(b[key]).toLowerCase() : '';
+
+                        if (aVal < bVal) return this.options.sortOrder === 'asc' ? -1 : 1;
+                        if (aVal > bVal) return this.options.sortOrder === 'asc' ? 1 : -1;
+                        return 0;
+                    });
+                }
             }
 
+            // Guardar en cache
+            this.filterCache = filtered;
             return filtered;
         }
 
@@ -533,7 +627,7 @@
         highlightText(element, searchText) {
             const text = element.textContent;
             if (!text || !searchText) return;
-            const regex = new RegExp(`(${searchText})`, 'gi');
+            const regex = new RegExp(`(${searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
             const parts = text.split(regex);
             if (parts.length <= 1) return;
 
@@ -571,6 +665,7 @@
             firstBtn.type = 'button';
             firstBtn.className = `btn btn-sm btn-primary rojeru-boton-celda first${this.currentPage === 1 ? ' disabled' : ''}`;
             firstBtn.innerHTML = '<i class="fas fa-angle-double-left"></i>';
+            firstBtn.disabled = this.currentPage === 1;
             if (this.currentPage > 1) {
                 firstBtn.addEventListener('click', () => {
                     this.currentPage = 1;
@@ -583,6 +678,7 @@
             prevBtn.type = 'button';
             prevBtn.className = `btn btn-sm btn-primary rojeru-boton-celda prev${this.currentPage === 1 ? ' disabled' : ''}`;
             prevBtn.innerHTML = '<i class="fas fa-angle-left"></i>';
+            prevBtn.disabled = this.currentPage === 1;
             if (this.currentPage > 1) {
                 prevBtn.addEventListener('click', () => {
                     this.currentPage--;
@@ -593,6 +689,7 @@
             // Selector de página
             const pageSelect = document.createElement('select');
             pageSelect.className = 'form-control form-control-sm custom-select px-4 mx-1 rojeru-boton-celda pagenum';
+            pageSelect.disabled = totalPages <= 1;
             for (let i = 1; i <= totalPages; i++) {
                 const option = document.createElement('option');
                 option.value = i;
@@ -613,6 +710,7 @@
             nextBtn.type = 'button';
             nextBtn.className = `btn btn-sm btn-primary rojeru-boton-celda next${this.currentPage === totalPages || total === 0 ? ' disabled' : ''}`;
             nextBtn.innerHTML = '<i class="fas fa-angle-right"></i>';
+            nextBtn.disabled = this.currentPage === totalPages || total === 0;
             if (this.currentPage < totalPages && total > 0) {
                 nextBtn.addEventListener('click', () => {
                     this.currentPage++;
@@ -625,6 +723,7 @@
             lastBtn.type = 'button';
             lastBtn.className = `btn btn-sm btn-primary rojeru-boton-celda last${this.currentPage === totalPages || total === 0 ? ' disabled' : ''}`;
             lastBtn.innerHTML = '<i class="fas fa-angle-double-right"></i>';
+            lastBtn.disabled = this.currentPage === totalPages || total === 0;
             if (this.currentPage < totalPages && total > 0) {
                 lastBtn.addEventListener('click', () => {
                     this.currentPage = totalPages;
@@ -651,6 +750,7 @@
             sizeSelect.addEventListener('change', (e) => {
                 this.options.rowsPerPage = parseInt(e.target.value);
                 this.currentPage = 1;
+                this.filterCache = null; // Invalidar cache
                 this.updateTable();
             });
 
@@ -671,21 +771,19 @@
 
         // Métodos públicos
         destroy() {
-            const wrapper = document.getElementById(`wrapper-${this.container.id}`);
-            if (wrapper) {
-                wrapper.removeEventListener('scroll', this.handleScroll);
-            }
             window.removeEventListener('resize', this.adjustWrapperHeight);
             console.log(`RojeruTableSorterLite on "${this.container.id}" destroyed.`);
         }
 
         refresh() {
+            this.filterCache = null; // Invalidar cache
             this.updateTable();
         }
 
         setData(newData) {
-            this.fullData = [...newData];
+            this.fullData = Array.isArray(newData) ? [...newData] : [];
             this.currentPage = 1;
+            this.filterCache = null; // Invalidar cache
             this.updateTable();
         }
 
@@ -696,6 +794,7 @@
                 this.fullData.push(rowData);
             }
             this.currentPage = 1;
+            this.filterCache = null; // Invalidar cache
             this.updateTable();
         }
 
@@ -707,16 +806,17 @@
                 if (this.currentPage > totalPages && totalPages > 0) {
                     this.currentPage = totalPages;
                 }
+                this.filterCache = null; // Invalidar cache
                 this.updateTable();
             }
         }
 
         getSelectedData() {
-            return this.filterData();
+            return this.getFilteredData();
         }
 
         getCurrentPageData() {
-            const filtered = this.filterData();
+            const filtered = this.getFilteredData();
             const realLimit = this.getRealLimit();
             const start = (this.currentPage - 1) * realLimit;
             return filtered.slice(start, start + realLimit);
@@ -742,12 +842,17 @@
         setRowsPerPage(rows) {
             this.options.rowsPerPage = rows;
             this.currentPage = 1;
+            this.filterCache = null; // Invalidar cache
             this.updateTable();
         }
 
         clearFilters() {
             this.filters = {};
             this.globalSearch = '';
+            this.currentPage = 1;
+            this.filterCache = null; // Invalidar cache
+
+            // Limpiar inputs
             const searchInput = document.getElementById(`buscador-global-${this.container.id}`);
             if (searchInput) searchInput.value = '';
 
@@ -761,7 +866,6 @@
                 }
             });
 
-            this.currentPage = 1;
             this.updateTable();
         }
 
@@ -771,6 +875,7 @@
 
         updateOptions(newOptions) {
             this.options = this.normalizeOptions({ ...this.options, ...newOptions });
+            this.filterCache = null; // Invalidar cache
             this.renderStructure();
             this.loadData(this.fullData);
         }
