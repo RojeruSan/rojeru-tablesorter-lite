@@ -54,7 +54,7 @@ locale: 'es' // o 'en'
 ```
 ## Configuración de columnas
 Cada columna puede tener estas propiedades:
-```json
+```javascript
 {
     key: 'id',                  // Clave única (requerido)
     title: 'ID',               // Título de la columna
