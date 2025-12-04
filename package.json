@@ -1,6 +1,6 @@
 {
   "name": "rojeru-tablesorter-lite",
-  "version": "1.0.0-lite",
+  "version": "1.0.1-lite",
   "description": "Versión Lite gratuita de Rojeru TableSorter - Tablas HTML dinámicas con ordenamiento, filtrado y paginación",
   "keywords": [
     "table",
@@ -23,10 +23,10 @@
   "license": "MIT",
   "author": "Rogelio Urieta Camacho <rogelio.urieta14@gmail.com>",
   "type": "commonjs",
-  "main": "rojeru-tablesorter-lite.js",
+  "main": "rojeru-tablesorter-lite.min.js",
   "files": [
-    "rojeru-tablesorter-lite.js",
-    "rojeru-tablesorter-lite.css",
+    "rojeru-tablesorter-lite.min.js",
+    "rojeru-tablesorter-lite.min.css",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"

@@ -23,10 +23,10 @@ npm install rojeru-tablesorter-lite
 ## CDN
 ```html
 <!-- CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/rojeru-tablesorter-lite@latest/rojeru-tablesorter-lite.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/rojeru-tablesorter-lite@latest/rojeru-tablesorter-lite.min.css">
 
 <!-- JavaScript -->
-<script src="https://cdn.jsdelivr.net/npm/rojeru-tablesorter-lite@latest/rojeru-tablesorter-lite.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/rojeru-tablesorter-lite@latest/rojeru-tablesorter-lite.min.js"></script>
 
 <!-- Font Awesome (opcional, para íconos) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
