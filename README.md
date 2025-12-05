@@ -1,7 +1,7 @@
 # Rojeru TableSorter Lite
 
 Versión gratuita y ligera de Rojeru TableSorter - Una librería JavaScript para crear tablas HTML dinámicas con ordenamiento, filtrado y paginación.
-
+[![Donar](https://img.shields.io/badge/Donar-PayPal-00457C?logo=paypal&style=for-the-badge)](https://www.paypal.com/donate/?cmd=_s-xclick&hosted_button_id=JLWEAETTE3H28&ssrt=1764941769118)
 ## Características
 
 - ✅ Ordenamiento por columnas (ascendente/descendente)
